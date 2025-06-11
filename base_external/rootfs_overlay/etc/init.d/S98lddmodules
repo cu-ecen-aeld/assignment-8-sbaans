@@ -1,0 +1,205 @@
+#!/bin/sh
+
+# Script to load the faulty , hello and scull kernel modules
+
+### BEGIN INIT INFO
+# Provides:       load the modules at start up and unload at shutdown
+# Required-Start:
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start: 5
+# Default-Stop:  0 6
+# Short-Description: start and stop faulty , hello and scull kernel modules
+# Description: faulty , hello and scull kernel modules
+### END INIT INFO
+
+INSMOD=/sbin/insmod;
+MODPROBE=/sbin/modprobe;
+
+mode="664"
+group="staff"
+DEVICE_SCULL="scull"
+DEVICE_FAULTY="faulty"
+DEVICE_HELLO="hello"
+SECTION="extra"
+KERNEL_VERSION=`uname -r`
+
+MODDIR="/lib/modules/${KERNEL_VERSION}/${SECTION}"
+
+
+
+# Load faulty
+function load_faulty () {
+    
+    if [ -f $MODDIR/$DEVICE_FAULTY.ko ]; then
+	devpath=$MODDIR/$DEVICE_FAULTY.ko
+    else if [ -f ./$DEVICE_FAULTY.ko ]; then
+	devpath=./$DEVICE_FAULTY.ko
+    else
+	devpath=$DEVICE_FAULTY; # let insmod/modprobe guess
+    fi; fi
+    if [ "$devpath" != "$DEVICE_FAULTY" ]; then
+	echo -n " (loading file $devpath)"
+    fi
+
+    if $INSMOD $devpath; then
+	major=$(awk "\$2==\"$DEVICE_FAULTY\" {print \$1}" /proc/devices)
+	if [ ! -z ${major} ]; then
+	    echo "Remove any existing /dev node for /dev/${DEVICE_FAULTY}"
+	    rm -f /dev/${DEVICE_FAULTY}
+	    echo "Add a node for our device at /dev/${DEVICE_FAULTY} using mknod"
+	    mknod /dev/${DEVICE_FAULTY} c $major 0
+	    echo "Change group owner to ${group}"
+	    chgrp $group /dev/${DEVICE_FAULTY}
+	    echo "Change access mode to ${mode}"
+	    chmod $mode  /dev/${DEVICE_FAULTY}
+	else
+	    echo "No device found in /proc/devices for driver ${DEVICE_FAULTY} (this driver may not allocate a device)"
+	fi
+    else
+	echo " FAILED!"
+     fi
+}
+
+function load_scull () {
+	if [ -f $MODDIR/$DEVICE_SCULL.ko ]; then
+	devpath=$MODDIR/$DEVICE_SCULL.ko
+	    else if [ -f ./$DEVICE_SCULL.ko ]; then
+		devpath=./$DEVICE_SCULL.ko
+	    else
+		devpath=$DEVICE_SCULL; # let insmod/modprobe guess
+	    fi; fi
+	    if [ "$devpath" != "$DEVICE_SCULL" ]; then
+		echo -n " (loading file $devpath)"
+	    fi
+	
+	# invoke insmod with all arguments we got
+	# and use a pathname, as insmod doesn't look in . by default
+	$INSMOD $devpath
+
+	# retrieve major number
+	major=$(awk "\$2==\"$DEVICE_SCULL\" {print \$1}" /proc/devices)
+
+	# Remove stale nodes and replace them, then give gid and perms
+	# Usually the script is shorter, it's scull that has several devices in it.
+
+	rm -f /dev/${DEVICE_SCULL}[0-3]
+	mknod /dev/${DEVICE_SCULL}0 c $major 0
+	mknod /dev/${DEVICE_SCULL}1 c $major 1
+	mknod /dev/${DEVICE_SCULL}2 c $major 2
+	mknod /dev/${DEVICE_SCULL}3 c $major 3
+	ln -sf ${DEVICE_SCULL}0 /dev/${DEVICE_SCULL}
+	chgrp $group /dev/${DEVICE_SCULL}[0-3] 
+	chmod $mode  /dev/${DEVICE_SCULL}[0-3]
+
+	rm -f /dev/${DEVICE_SCULL}pipe[0-3]
+	mknod /dev/${DEVICE_SCULL}pipe0 c $major 4
+	mknod /dev/${DEVICE_SCULL}pipe1 c $major 5
+	mknod /dev/${DEVICE_SCULL}pipe2 c $major 6
+	mknod /dev/${DEVICE_SCULL}pipe3 c $major 7
+	ln -sf ${DEVICE_SCULL}pipe0 /dev/${DEVICE_SCULL}pipe
+	chgrp $group /dev/${DEVICE_SCULL}pipe[0-3] 
+	chmod $mode  /dev/${DEVICE_SCULL}pipe[0-3]
+
+	rm -f /dev/${DEVICE_SCULL}single
+	mknod /dev/${DEVICE_SCULL}single  c $major 8
+	chgrp $group /dev/${DEVICE_SCULL}single
+	chmod $mode  /dev/${DEVICE_SCULL}single
+
+	rm -f /dev/${DEVICE_SCULL}uid
+	mknod /dev/${DEVICE_SCULL}uid   c $major 9
+	chgrp $group /dev/${DEVICE_SCULL}uid
+	chmod $mode  /dev/${DEVICE_SCULL}uid
+
+	rm -f /dev/${DEVICE_SCULL}wuid
+	mknod /dev/${DEVICE_SCULL}wuid  c $major 10
+	chgrp $group /dev/${DEVICE_SCULL}wuid
+	chmod $mode  /dev/${DEVICE_SCULL}wuid
+
+	rm -f /dev/${DEVICE_SCULL}priv
+	mknod /dev/${DEVICE_SCULL}priv  c $major 11
+	chgrp $group /dev/${DEVICE_SCULL}priv
+	chmod $mode  /dev/${DEVICE_SCULL}priv
+	echo " SUCCESS load_scull!"
+}
+
+function load_hello () {
+    if $MODPROBE $DEVICE_HELLO.ko; then
+	major=$(awk "\$2==\"$DEVICE_HELLO\" {print \$1}" /proc/devices)
+	if [ ! -z ${major} ]; then
+	    echo "Remove any existing /dev node for /dev/${DEVICE_HELLO}"
+	    rm -f /dev/${DEVICE_HELLO}
+	    echo "Add a node for our device at /dev/${DEVICE_HELLO} using mknod"
+	    mknod /dev/${DEVICE_HELLO} c $major 0
+	    echo "Change group owner to ${group}"
+	    chgrp $group /dev/${DEVICE_HELLO}
+	    echo "Change access mode to ${mode}"
+	    chmod $mode  /dev/${DEVICE_HELLO}
+	else
+	    echo "No device found in /proc/devices for driver ${DEVICE_HELLO} (this driver may not allocate a device)"
+	fi
+    else
+	echo " FAILED!"
+     fi
+    echo " SUCCESS load_hello!"
+}
+
+function unload_faulty () {
+# invoke rmmod with all arguments we got
+rmmod $DEVICE_FAULTY || exit 1
+
+# Remove stale nodes
+
+rm -f /dev/${DEVICE_FAULTY}
+}
+
+function unload_scull () {
+	# invoke rmmod with all arguments we got
+	rmmod $DEVICE_SCULL $* || exit 1
+
+	# Remove stale nodes
+
+	rm -f /dev/${DEVICE_SCULL} /dev/${DEVICE_SCULL}[0-3] 
+	rm -f /dev/${DEVICE_SCULL}priv
+	rm -f /dev/${DEVICE_SCULL}pipe /dev/${DEVICE_SCULL}pipe[0-3]
+	rm -f /dev/${DEVICE_SCULL}single
+	rm -f /dev/${DEVICE_SCULL}uid
+	rm -f /dev/${DEVICE_SCULL}wuid
+
+    echo " SUCCESS unload_scull!"
+}
+
+function unload_hello () {
+# invoke rmmod with all arguments we got
+rmmod $DEVICE_HELLO || exit 1
+
+# Remove stale nodes
+
+rm -f /dev/${DEVICE_HELLO}
+    echo " SUCCESS unload_hello!"
+}
+
+case "$1" in
+  start)
+     echo -n "Loading faulty"
+     load_faulty
+     echo -n "Loading scull"
+     load_scull
+     echo -n "Loading hello"
+     load_hello
+     echo "."
+     ;;
+  stop)
+     echo -n "Unloading faulty"
+     unload_faulty
+     echo -n "Unloading scull"
+     unload_scull
+     echo -n "Unloading hello"
+     unload_hello
+     echo "."
+     ;;
+  *)
+     echo "Usage: $0 {start|stop}"
+     exit 1
+esac

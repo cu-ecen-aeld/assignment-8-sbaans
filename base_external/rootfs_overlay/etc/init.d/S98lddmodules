@@ -22,13 +22,44 @@ group="staff"
 DEVICE_SCULL="scull"
 DEVICE_FAULTY="faulty"
 DEVICE_HELLO="hello"
+DEVICE_AESDCHAR="aesdchar"
 SECTION="extra"
 KERNEL_VERSION=`uname -r`
 
 MODDIR="/lib/modules/${KERNEL_VERSION}/${SECTION}"
 
 
+# Load aesdchar
+function load_aesdchar () {
+	if [ -f $MODDIR/$DEVICE_AESDCHAR.ko ]; then
+	devpath=$MODDIR/$DEVICE_AESDCHAR.ko
+    else if [ -f ./$DEVICE_AESDCHAR.ko ]; then
+	devpath=./$DEVICE_AESDCHAR.ko
+    else
+	devpath=$DEVICE_AESDCHAR; # let insmod/modprobe guess
+    fi; fi
+    if [ "$devpath" != "$DEVICE_AESDCHAR" ]; then
+	echo -n " (loading file $devpath)"
+    fi
 
+    if $INSMOD $devpath; then
+	major=$(awk "\$2==\"$DEVICE_AESDCHAR\" {print \$1}" /proc/devices)
+	if [ ! -z ${major} ]; then
+	    echo "Remove any existing /dev node for /dev/${DEVICE_AESDCHAR}"
+	    rm -f /dev/${DEVICE_FAULTY}
+	    echo "Add a node for our device at /dev/${DEVICE_AESDCHAR} using mknod"
+	    mknod /dev/${DEVICE_AESDCHAR} c $major 0
+	    echo "Change group owner to ${group}"
+	    chgrp $group /dev/${DEVICE_AESDCHAR}
+	    echo "Change access mode to ${mode}"
+	    chmod $mode  /dev/${DEVICE_AESDCHAR}
+	else
+	    echo "No device found in /proc/devices for driver ${DEVICE_AESDCHAR} (this driver may not allocate a device)"
+	fi
+    else
+	echo " FAILED!"
+     fi
+}
 # Load faulty
 function load_faulty () {
     
@@ -145,6 +176,15 @@ function load_hello () {
     echo " SUCCESS load_hello!"
 }
 
+function unload_aesdchar () {
+# invoke rmmod with all arguments we got
+rmmod $DEVICE_AESDCHAR || exit 1
+
+# Remove stale nodes
+
+rm -f /dev/${DEVICE_AESDCHAR}
+}
+
 function unload_faulty () {
 # invoke rmmod with all arguments we got
 rmmod $DEVICE_FAULTY || exit 1
@@ -182,6 +222,8 @@ rm -f /dev/${DEVICE_HELLO}
 
 case "$1" in
   start)
+  	 echo -n "Loading aesdchar"
+     load_aesdchar
      echo -n "Loading faulty"
      load_faulty
      echo -n "Loading scull"
@@ -191,6 +233,8 @@ case "$1" in
      echo "."
      ;;
   stop)
+  	 echo -n "Unloading aesdchar"
+     unload_aesdchar
      echo -n "Unloading faulty"
      unload_faulty
      echo -n "Unloading scull"

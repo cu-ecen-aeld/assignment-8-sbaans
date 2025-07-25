@@ -6,7 +6,7 @@
 ##############################################################
 
 #TODO: Fill up the contents below in order to reference your assignment 3 git contents
-AESD_ASSIGNMENTS_VERSION = f2ebf0dfa8d93a6642433cddb11a9fbcf04dbc22
+AESD_ASSIGNMENTS_VERSION = 7daeb2c1dfd831099418339d686791217dcba4ca
 
 # Note: Be sure to reference the *ssh* repository URL here (not https) to work properly
 # with ssh keys and the automated build/test system.
@@ -14,6 +14,8 @@ AESD_ASSIGNMENTS_VERSION = f2ebf0dfa8d93a6642433cddb11a9fbcf04dbc22
 AESD_ASSIGNMENTS_SITE = git@github.com:cu-ecen-aeld/assignments-3-and-later-sbaans.git
 AESD_ASSIGNMENTS_SITE_METHOD = git
 AESD_ASSIGNMENTS_GIT_SUBMODULES = YES
+
+AESD_MODULE_SUBDIRS = aesdchar
 
 
 define AESD_ASSIGNMENTS_BUILD_CMDS
@@ -26,4 +28,5 @@ define AESD_ASSIGNMENTS_INSTALL_TARGET_CMDS
 	$(INSTALL) -m 0755 $(@D)/server/aesdsocket-start-stop $(TARGET_DIR)/etc/init.d/S99aesdsocket
 endef
 
+$(eval $(kernel-module))
 $(eval $(generic-package))

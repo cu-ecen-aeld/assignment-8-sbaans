@@ -15,7 +15,6 @@ AESD_ASSIGNMENTS_SITE = git@github.com:cu-ecen-aeld/assignments-3-and-later-sbaa
 AESD_ASSIGNMENTS_SITE_METHOD = git
 AESD_ASSIGNMENTS_GIT_SUBMODULES = YES
 
-AESD_MODULE_SUBDIRS = aesdchar
 
 
 define AESD_ASSIGNMENTS_BUILD_CMDS
@@ -28,5 +27,4 @@ define AESD_ASSIGNMENTS_INSTALL_TARGET_CMDS
 	$(INSTALL) -m 0755 $(@D)/server/aesdsocket-start-stop $(TARGET_DIR)/etc/init.d/S99aesdsocket
 endef
 
-$(eval $(kernel-module))
 $(eval $(generic-package))
